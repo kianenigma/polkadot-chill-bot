@@ -103,7 +103,6 @@ async function dryRun(api: ApiPromise, account: KeyringPair, batch: SubmittableE
 	const dryRun = await api.rpc.system.dryRun(signed.toHex());
 	console.log(`dry_run of ${batch.toHuman()} => ${dryRun}`)
 	return dryRun.isOk && dryRun.asOk.isOk
-
 }
 
 async function buildChillTxs(api: ApiPromise, threshold: BN, maybeLimit?: number): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>[]> {
@@ -125,7 +124,7 @@ async function buildChillTxs(api: ApiPromise, threshold: BN, maybeLimit?: number
 
 	return toRemoveFinal.map(({ ctrl, stake}) => {
 		console.log(`will chill ${ctrl.toHuman()} with stake ${api.createType('Balance', stake).toHuman()}`);
-		return api.tx.staking.chill_other(ctrl);
+		return api.tx.staking.chillOther(ctrl);
 	});
 }
 
