@@ -2,7 +2,7 @@
 	"name": "polkadot-chill-bot",
 	"version": "0.1.0",
 	"description": "Chills low staked nominators.",
-	"main": "index.js",
+	"main": "index.ts",
 	"scripts": {
 		"dev": "./node_modules/.bin/nodemon --exec ./node_modules/.bin/ts-node ./src/index.ts",
 		"start": "./node_modules/.bin/ts-node ./src/index.ts",
