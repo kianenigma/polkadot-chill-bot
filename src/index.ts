@@ -58,7 +58,7 @@ async function sendAndFinalize(tx: SubmittableExtrinsic<"promise", ISubmittableR
 		const unsubscribe = await tx.signAndSend(account, ({ events = [], status, dispatchError }) => {
 			if (status.isInBlock) {
 				success = dispatchError ? false : true;
-				console.log(`📀 Transaction ${tx.meta.name}(${tx.args.toString()}) included at blockHash ${status.asInBlock} [success = ${success}]`);
+				console.log(`📀 Transaction ${tx.meta.name}(..) included at blockHash ${status.asInBlock} [success = ${success}]`);
 				included = [...events]
 			} else if (status.isBroadcast) {
 				console.log(`🚀 Transaction broadcasted.`);
@@ -107,7 +107,7 @@ async function kick(api: ApiPromise, keyring: Keyring, seedPath: string, noDryRu
 async function dryRun(api: ApiPromise, account: KeyringPair, batch: SubmittableExtrinsic<"promise", ISubmittableResult>): Promise<boolean> {
 	const signed = await batch.signAsync(account);
 	const dryRun = await api.rpc.system.dryRun(signed.toHex());
-	console.log(`dry run of transaction => ${dryRun}`)
+	console.log(`dry run of transaction => ${dryRun.toHuman()}`)
 	return dryRun.isOk && dryRun.asOk.isOk
 }
 
