@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring, WsProvider } from "@polkadot/api";
 import { hideBin } from "yargs/helpers"
 import { CodecHash } from "@polkadot/types/interfaces/runtime"
-import { EventRecord } from "@polkadot/types/interfaces/"
+import { EventRecord, Percent } from "@polkadot/types/interfaces/"
 import { SubmittableExtrinsic } from "@polkadot/api/submittable/types"
 import { ISubmittableResult } from "@polkadot/types/types/"
 import BN from "bn.js";
@@ -79,12 +79,14 @@ async function sendAndFinalize(tx: SubmittableExtrinsic<"promise", ISubmittableR
 
 async function kick(api: ApiPromise, keyring: Keyring, seedPath: string, noDryRun?: boolean, limit?: number) {
 	const threshold = api.createType('Balance', (await api.query.staking.minNominatorBond())).toBn();
+	const chillThreshold = (await api.query.staking.chillThreshold()).unwrapOrDefault();
 	const seed = readFileSync(seedPath).toString().trim();
 	const account = keyring.addFromUri(seed);
 	console.log(`📣 using account ${account.address}, info ${await api.query.system.account(account.address)}`)
-	console.log(`📣 threshold for chilling is ${api.createType('Balance', threshold).toHuman()}`);
+	console.log(`📣 DOT threshold for chilling is ${api.createType('Balance', threshold).toHuman()}`);
+	console.log(`📣 ratio threshold for chilling is ${chillThreshold.toHuman()}`);
 
-	const transactions = await buildChillTxs(api, threshold, limit)
+	const transactions = await buildChillTxs(api, threshold, chillThreshold, limit)
 	const batch = api.tx.utility.batchAll(transactions);
 
 	if (noDryRun) {
@@ -107,11 +109,11 @@ async function kick(api: ApiPromise, keyring: Keyring, seedPath: string, noDryRu
 async function dryRun(api: ApiPromise, account: KeyringPair, batch: SubmittableExtrinsic<"promise", ISubmittableResult>): Promise<boolean> {
 	const signed = await batch.signAsync(account);
 	const dryRun = await api.rpc.system.dryRun(signed.toHex());
-	console.log(`dry run of transaction => ${dryRun.toHuman()}`)
+	console.log(`dry run of transaction => `, dryRun.toHuman())
 	return dryRun.isOk && dryRun.asOk.isOk
 }
 
-async function buildChillTxs(api: ApiPromise, threshold: BN, maybeLimit?: number): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>[]> {
+async function buildChillTxs(api: ApiPromise, threshold: BN, chillThreshold: Percent, maybeLimit?: number): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>[]> {
 	let allVotes = 0;
 	const AllNominatorsRawPromise = (await api.query.staking.nominators.entries())
 		.map(async ([stashKey, nomination]) => {
@@ -142,11 +144,17 @@ async function buildChillTxs(api: ApiPromise, threshold: BN, maybeLimit?: number
 	const ejectedStake = toRemoveAll
 		.map(({ stake }) => stake)
 		.reduce((prev, current) => prev = current.add(prev));
-	console.log(`a total of ${toRemoveAll.length} accounts with sum stake ${api.createType("Balance", ejectedStake).toHuman()} (from the ${allNominators.length} total and ${allVotes} votes) are below the nominator threshold..`)
+
+	const maxNominators = (await api.query.staking.maxNominatorsCount()).unwrapOrDefault();
+	const minNominators = chillThreshold.mul(maxNominators).divn(100);
+	const maxChillable = allNominators.length - minNominators.toNumber();
+	console.log(`📊 a total of ${toRemoveAll.length} accounts with sum stake ${api.createType("Balance", ejectedStake).toHuman()} (from the ${allNominators.length} total and ${allVotes} votes) are below the nominator threshold..`)
+	console.log(`\t.. which can be lowered to a minimum of ${minNominators} via chill..`)
+	console.log(`\t.. thus ${maxChillable} can be chilled to stay below the ${chillThreshold.toHuman()} limit..`)
 
 	// take some, or all
 	const toRemoveFinal = maybeLimit === null ? toRemoveAll : toRemoveAll.slice(0, maybeLimit);
-	console.log(`.. of which ${toRemoveFinal.length} will be removed in this execution.`)
+	console.log(`\t.. of which ${toRemoveFinal.length} will be removed in this execution.`)
 
 	if (toRemoveFinal.length === 0) {
 		throw Error("no one to chill. cannot build batch tx.")
