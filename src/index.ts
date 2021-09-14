@@ -150,7 +150,7 @@ async function buildChillTxs(api: ApiPromise, threshold: BN, chillThreshold: Per
 	const maxChillable = allNominators.length - minNominators.toNumber();
 	console.log(`📊 a total of ${toRemoveAll.length} accounts with sum stake ${api.createType("Balance", ejectedStake).toHuman()} (from the ${allNominators.length} total and ${allVotes} votes) are below the nominator threshold..`)
 	console.log(`\t.. which can be lowered to a minimum of ${minNominators} via chill..`)
-	console.log(`\t.. thus ${Math.max(maxChillable, toRemoveAll.length)} can be chilled to stay below the ${chillThreshold.toHuman()} limit..`)
+	console.log(`\t.. thus ${Math.min(maxChillable, toRemoveAll.length)} can be chilled to stay below the ${chillThreshold.toHuman()} limit..`)
 
 	// take some, or all
 	const toRemoveFinal = maybeLimit === null ? toRemoveAll : toRemoveAll.slice(0, maybeLimit);
