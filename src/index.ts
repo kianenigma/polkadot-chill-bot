@@ -85,6 +85,7 @@ async function kick(api: ApiPromise, keyring: Keyring, seedPath: string, noDryRu
 	console.log(`📣 using account ${account.address}, info ${await api.query.system.account(account.address)}`)
 	console.log(`📣 DOT threshold for chilling is ${api.createType('Balance', threshold).toHuman()}`);
 	console.log(`📣 ratio threshold for chilling is ${chillThreshold.toHuman()}`);
+	console.log(`📣 current status is ${await api.query.staking.counterForNominators()} / ${await api.query.staking.maxNominatorsCount()} nominators -- ${await api.query.staking.counterForValidators()} / ${await api.query.staking.maxValidatorsCount()} validators`);
 
 	const transactions = await buildChillTxs(api, threshold, chillThreshold, limit)
 	const batch = api.tx.utility.batchAll(transactions);
